@@ -1,0 +1,78 @@
+1.
+mkdir -p q09/
+cd q09
+touch src/greetlab/__init__.py
+cat > src/greetlab/cli.py <<'EOF'
+import argparse
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--name", required=True)
+    a = p.parse_args()
+    print(f"Hello, {a.name}!")
+EOF
+cat > pyproject.toml <<'EOF'
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "greetlab-25020007149"
+version = "0.1.0"
+[project.scripts]
+sdt-greet = "greetlab.cli:main"
+EOF
+sudo apt install python3.13-venv
+python3 -m venv .vene
+source .venv/bin/activate
+pip install build
+python -m build
+ls dist
+pip install dist/greetlab-25020007149-0.1.0-py3-none-any.whl
+sdt-greet --name test
+2.
+cp -r q09 q10
+cd q10
+cat > test_greetlab.py <<'EOF'
+import pytest
+from greetlab.cli import main
+import sys
+
+def test_normal_name(monkeypatch, capsys):
+    monkeypatch.setattr(sys, 'argv', ["", "--name", "Alice"])
+    main()
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "Hello, Alice!"
+
+def test_blank_name_exit(monkeypatch):
+    # name只有空白字符（空格），预期抛出SystemExit，状态码=2
+    monkeypatch.setattr(sys, 'argv', ["", "--name", "   "])
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+    assert excinfo.value.code == 2
+EOF
+PYTHONPATH=src pytest test_greetlab.py -v
+nano src/greetlab/cli.py
+import argparse
+import sys
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--name", required=True)
+    a = p.parse_args()
+    # 新增：如果name去除首尾空白后为空，退出码2
+    if not a.name.strip():
+        sys.exit(2)
+    print(f"Hello, {a.name}!")
+
+if __name__ == "__main__":
+    main()
+PYTHONPATH=src pytest test_greetlab.py 
+git diff
+# 如果没初始化git：git init ; git add . ; git commit -m init
+cat > ai_log.md <<'EOF'
+为greetlab增加空白name校验，退出码2。
+先编写测试用例，初次运行测试失败。
+修改cli.py增加空白输入判断。
+再次执行pytest，两个用例全部通过。
+仅新增必要代码，无多余改动。
+EOF
+

@@ -67,7 +67,6 @@ if __name__ == "__main__":
     main()
 PYTHONPATH=src pytest test_greetlab.py 
 git diff
-# 如果没初始化git：git init ; git add . ; git commit -m init
 cat > ai_log.md <<'EOF'
 为greetlab增加空白name校验，退出码2。
 先编写测试用例，初次运行测试失败。
@@ -75,4 +74,56 @@ cat > ai_log.md <<'EOF'
 再次执行pytest，两个用例全部通过。
 仅新增必要代码，无多余改动。
 EOF
+
+3.
+cp -r q10 q11
+cd q11
+cat > communication.md <<'EOF'
+## Issue
+环境：Windows，Python环境版本待确认
+复现命令：sdt-greet --name "   "
+实际结果：输出 Hello, !，退出码0
+期望结果：检测到纯空白name，以退出码2退出
+描述：缺少空白姓名校验，纯空格参数仍正常执行。
+
+## 提交信息
+完善空白姓名参数校验
+原程序对仅含空格的name不拦截，执行后正常输出问候，退出码0。新增空白判断，当name去除空格为空时，使用退出码2终止程序。
+
+## 评审意见（Blocking）
+行为：全空白name输入无拦截，程序正常执行。
+风险：无法满足参数校验需求，测试用例失败。
+建议：增加空白字符判断，纯空白输入返回退出码2，匹配测试预期。
+EOF
+4.
+mkdir -p q12
+cd q12
+cat > train.py <<'EOF'
+import torch
+from torch import nn
+torch.manual_seed(20260907)
+x = torch.linspace(-1, 1, 101).reshape(-1, 1)
+y = 3 * x - 1
+model = nn.Linear(1, 1)
+loss_fn = nn.MSELoss()
+opt = torch.optim.SGD(model.parameters(), lr=0.1)
+
+for _ in range(200):
+    pred = model(x)
+    loss = loss_fn(pred, y)
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+
+model.eval()
+with torch.no_grad():
+    pred_final = model(x)
+    loss_final = loss_fn(pred_final, y)
+    w = model.weight.item()
+    b = model.bias.item()
+    print(f"final loss: {loss_final:.6f}")
+    print(f"weight: {w:.4f}")
+    print(f"bias: {b:.4f}")
+EOF
+python3 train.py
 

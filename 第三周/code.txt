@@ -168,8 +168,15 @@ cat requirements.txt
 Install Docker and use it to build the Missing Semester class website locally using docker compose.
 4.
 用 AI 编程智能体浏览一个陌生的代码库。最好在调试或为你在意的项目添加新功能的背景下进行。
-10.
-Write a Dockerfile for a simple Python application. Then write a docker-compose.yml that runs your application alongside a Redis cache.
+
+5
+在你使用的所有支持 Vim mode 的软件中启用 Vim 模式，例如编辑器和 Shell，
+并在接下来一个月里把所有文本编辑都用 Vim 模式完成。每当你觉得哪里低效，
+或者想到“肯定有更好的办法”时，就去 Google 一下，通常真的有更好的办法。
+6.
+使用管道找出你「home 目录」中最常见的 5 种文件扩展名。（提示：组合 find 、grep / sed / awk、sort、uniq -c 以及 head）
+7.
+awk 可以按列值过滤行并改写输出。例如，awk '$3 ~ /pattern/ {$4=""; print}' 会只输出第三列匹配 pattern 的行，并省略第四列。请写一个 awk 命令：只输出第二列大于 100 的行，并交换第一列和第三列。可用这条命令测试：printf 'a 50 x\nb 150 y\nc 200 z\n'
 8.
 浏览一个知名项目（例如 Redis 或 curl）的源码。 找出讲义中提到的几种注释类型：有用的 TODO、
 指向外部文档的引用、解释为何避开某种做法的“why not”注释、或血泪教训。 如果这些注释不存在，会失去什么？
@@ -190,15 +197,83 @@ Write a Dockerfile for a simple Python application. Then write a docker-compose.
  * which is shared between the skiplist and the hash table, so
  * we need to delete from the skiplist as the final step. */
 没有这段注释，后来人很可能觉得 "先删跳表再删哈希表" 或 "先删谁都行"，结果导致 use-after-free。
-5
-在你使用的所有支持 Vim mode 的软件中启用 Vim 模式，例如编辑器和 Shell，
-并在接下来一个月里把所有文本编辑都用 Vim 模式完成。每当你觉得哪里低效，
-或者想到“肯定有更好的办法”时，就去 Google 一下，通常真的有更好的办法。
-6.
-使用管道找出你「home 目录」中最常见的 5 种文件扩展名。（提示：组合 find 、grep / sed / awk、sort、uniq -c 以及 head）
-7.
-awk 可以按列值过滤行并改写输出。例如，awk '$3 ~ /pattern/ {$4=""; print}' 会只输出第三列匹配 pattern 的行，并省略第四列。请写一个 awk 命令：只输出第二列大于 100 的行，并交换第一列和第三列。可用这条命令测试：printf 'a 50 x\nb 150 y\nc 200 z\n'
 9.
 Publish a Python package to TestPyPI (don’t publish to the real PyPI unless it’s worth sharing!). Then build a Docker image with said package and push it to ghcr.io.
+浏览一个知名项目（例如 Redis 或 curl）的源码。 找出讲义中提到的几种注释类型：有用的 TODO、
+指向外部文档的引用、解释为何避开某种做法的“why not”注释、或血泪教训。 如果这些注释不存在，会失去什么？
+（1）有用的 TODO 注释
+/* TODO: this would be a breaking change for scripts, do that in a major version. */
+/* else if (r->type == REDIS_REPLY_PUSH) numsep = '>'; */
+说明为什么现在不做（会破坏脚本兼容性）以及什么时候做。
+（2）指向外部文档 / 资料的引用
+/* Based on the following article (that apparently does not provide a
+ * novel approach but only publicizes an already used technique):
+ *
+ * https://www.facebook.com/notes/facebook-engineering/three-optimization-tips-for-c/10151361643253920 */
+`ull2string()` 这个整数转字符串的优化算法，作者把原始出处链接写在了函数头注释里。
+（3）"Why not" 注释
+/* Delete from the hash table and later from the skiplist.
+ * Note that the order is important: deleting from the skiplist
+ * actually releases the SDS string representing the element,
+ * which is shared between the skiplist and the hash table, so
+ * we need to delete from the skiplist as the final step. */
+10.
 
+Write a Dockerfile for a simple Python application. Then write a docker-compose.yml that runs your application alongside a Redis cache.
+# 新建项目文件夹并进入
+mkdir python-redis-demo
+cd python-redis-demo
+
+# 创建 Dockerfile
+cat > Dockerfile <<'EOF'
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "app.py"]
+EOF
+
+# 创建 requirements.txt
+cat > requirements.txt <<'EOF'
+redis>=5.0.0
+EOF
+
+# 创建 app.py
+cat > app.py <<'EOF'
+import redis
+import time
+
+r = redis.Redis(host="redis", port=6379, decode_responses=True)
+
+if __name__ == "__main__":
+    r.set("greet", "Hello from redis + python")
+    print(r.get("greet"))
+    while True:
+        time.sleep(2)
+EOF
+
+# 创建 docker-compose.yml
+cat > docker-compose.yml <<'EOF'
+version: "3.8"
+
+services:
+  python-app:
+    build: .
+    depends_on:
+      - redis
+    restart: always
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+EOF
+
+# 构建并启动容器
+sudo docker-compose up --build
 

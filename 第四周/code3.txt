@@ -119,5 +119,111 @@ make all
 make clean
 
 
+3.
+mkdir -p ~/q15
+cd ~/q15
 
+# 创建 packages.json
+cat > packages.json <<'EOF'
+[
+{"name":"alpha","status":"active","downloads":120,"version":"1.2.0"},
+{"name":"beta","status":"inactive","downloads":900,"version":"2.0.0"},
+{"name":"gamma","status":"active","downloads":450,"version":"1.5.1"},
+{"name":"delta","status":"active","downloads":450,"version":"0.9.0"},
+{"name":"epsilon","status":"active","downloads":80,"version":"3.1.0"}
+]
+EOF
+cat > api_report.sh <<'EOF'
+#!/bin/bash
+curl -fsS http://127.0.0.1:8000/packages.json | jq '
+.[]
+| select(.status == "active" and .downloads >= 100)
+' | jq -s 'sort_by(-.downloads, .name)' > filtered.json
 
+cat > summary.md <<MD
+# Active Packages Summary
+
+| name | version | downloads |
+|------|---------|-----------|
+MD
+jq -r '.[] | "| \(.name) | \(.version) | \(.downloads) |"' filtered.json >> summary.md
+rm -f filtered.json
+EOF
+
+新开终端
+cd ~/q15
+python -m http.server 8000
+
+回到原终端
+chmod +x api_report.sh
+./api_report.sh
+cat summary.md
+
+4.
+
+#1 复制q13完整目录到q16
+cp -r q13 q16
+cd q16
+
+#2 git初始化（如果q13不带git仓库）
+git init
+git config user.name "xue1"
+git config user.email "xue1@vm.local"
+
+#3 【题目要求：临时改成固定字面量制造bug】
+cat > src/greetlab/cli.py <<'EOF'
+import argparse
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--name", required=True)
+    a = p.parse_args()
+    print(f"Hello, name!")
+EOF
+
+#4 编写Makefile（命令前面是Tab）
+cat > Makefile <<'EOF'
+check:
+	bash check.sh
+
+build:
+	python -m build
+
+clean:
+	rm -rf dist build *.egg-info .venv
+EOF
+
+#5 虚拟环境
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e . ruff pytest build
+
+#6 运行检查，确认测试失败
+make check
+
+#7 修复cli.py
+cat > src/greetlab/cli.py <<'EOF'
+import argparse
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--name", required=True)
+    a = p.parse_args()
+    print(f"Hello, {a.name}!")
+EOF
+
+#8 ruff格式化
+ruff format src/greetlab/cli.py
+
+#9 再次检查
+make check
+
+#10 打包wheel
+make build
+
+#11 计算sha256
+sha256sum dist/*.whl
+
+git add .
+git commit -m "q16: fix greet cli, add Makefile(check/build/clean)"
+git status

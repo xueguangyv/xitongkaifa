@@ -1,0 +1,123 @@
+cp -r q10 q13
+cd q13
+nano pyproject.toml
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "greetlab-25020007149"
+version = "0.1.0"
+dependencies = [
+  "ruff",
+  "pytest"
+]
+
+[project.scripts]
+sdt-greet = "greetlab.cli:main"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+mkdir tests
+cat > tests/test_cli.py <<'EOF'
+import subprocess
+
+def test_normal_name():
+    result = subprocess.run(
+        ["sdt-greet", "--name", "Alice"],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0
+    assert "Hello, Alice!" in result.stdout
+
+def test_blank_name():
+    result = subprocess.run(
+        ["sdt-greet", "--name", ""],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0
+    assert "Hello, !" in result.stdout
+EOF
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cat > check.sh <<'EOF'
+#!/bin/bash
+set -e
+echo "=== ruff format --check ==="
+ruff format --check .
+echo "=== ruff check ==="
+ruff check .
+echo "=== pytest ==="
+pytest
+echo "✅ All quality checks passed!"
+EOF
+chmod +x check.sh
+./check.sh
+cd ~
+2.
+mkdir q14
+cd q14
+
+cat > data.csv <<'EOF'
+name,value
+alpha,2
+beta,3
+gamma,5
+EOF
+
+cat > stats.py <<'EOF'
+import csv
+with open("data.csv") as f:
+    total = sum(int(r["value"]) for r in csv.DictReader(f))
+open("stats.txt", "w").write(str(total))
+EOF
+
+cat > build_report.py <<'EOF'
+text = open("report.md").read()
+total = open("stats.txt").read()
+open("report.txt", "w").write(f"{text}\nTotal: {total}\n")
+EOF
+
+cat > report.md <<'EOF'
+# Data Report
+EOF
+nano makefile
+# Makefile
+.PHONY: all clean
+
+all: report.txt
+
+stats.txt: data.csv stats.py
+	python3 stats.py
+
+report.txt: report.md stats.txt build_report.py
+	python3 build_report.py
+
+clean:
+	rm -f stats.txt report.txt
+# 首次构建
+make all
+
+# 第二次，无文件改动，不会执行任何命令
+make all
+
+# touch data.csv，触发重新构建，两个产物重新生成
+touch data.csv
+make all
+
+# 清理产物，只删除stats.txt、report.txt，保留源码
+make clean
+
+
+
+
